@@ -156,3 +156,63 @@ fileInput.onchange = e => readFile(e.target.files[0]);
 ['dragleave','drop'].forEach(ev=>drop.addEventListener(ev,e=>{e.preventDefault();drop.classList.remove('drag')}));
 drop.addEventListener('drop',e=>readFile(e.dataTransfer.files[0]));
 load();
+
+// Gemini image studio (Vercel serverless endpoint)
+const imagePrompt = $('#imagePrompt');
+const generatedImage = $('#generatedImage');
+let generatedObjectUrl = '';
+
+$('#toggleCode').onclick = () => {
+  const input = $('#accessCode');
+  input.type = input.type === 'password' ? 'text' : 'password';
+};
+
+function suggestedImagePrompt() {
+  const q = clean(topic.value) || 'Печат на винил';
+  const city = clean(locationInput.value);
+  const plus = clean(benefit.value);
+  return `Професионална рекламна визия за ${q.toLowerCase()}${city ? ` в ${city}` : ''}. ${plus ? `Акцент: ${plus}.` : ''} Модерна композиция, убедителна за клиенти, чисто свободно пространство за рекламно послание, без лога и водни знаци.`;
+}
+
+imagePrompt.addEventListener('focus', () => {
+  if (!imagePrompt.value.trim()) imagePrompt.value = suggestedImagePrompt();
+});
+
+$('#generateImageBtn').onclick = async () => {
+  const prompt = clean(imagePrompt.value) || suggestedImagePrompt();
+  const button = $('#generateImageBtn');
+  const code = $('#accessCode').value.trim();
+  button.disabled = true;
+  $('#imagePlaceholder').classList.add('hidden');
+  generatedImage.classList.add('hidden');
+  $('#downloadImage').classList.add('hidden');
+  $('#imageLoading').classList.remove('hidden');
+  try {
+    const response = await fetch('/api/generate-image', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json', ...(code ? {'x-access-code': code} : {})},
+      body: JSON.stringify({prompt, headline: clean($('#imageHeadline').value), aspectRatio: $('#imageRatio').value, style: $('#imageStyle').value})
+    });
+    if (!response.ok) {
+      let error = `Грешка ${response.status}`;
+      try { error = (await response.json()).error || error; } catch {}
+      throw new Error(error);
+    }
+    const blob = await response.blob();
+    if (generatedObjectUrl) URL.revokeObjectURL(generatedObjectUrl);
+    generatedObjectUrl = URL.createObjectURL(blob);
+    generatedImage.src = generatedObjectUrl;
+    generatedImage.classList.remove('hidden');
+    const download = $('#downloadImage');
+    download.href = generatedObjectUrl;
+    download.classList.remove('hidden');
+    toast('Изображението е готово.');
+  } catch (error) {
+    $('#imagePlaceholder').classList.remove('hidden');
+    const localHint = location.hostname === '127.0.0.1' || location.hostname === 'localhost';
+    toast(localHint ? 'AI функцията работи след публикуване във Vercel.' : error.message);
+  } finally {
+    $('#imageLoading').classList.add('hidden');
+    button.disabled = false;
+  }
+};

@@ -120,6 +120,33 @@
           <div id="postsGrid" class="posts-grid hidden"></div>
         </div>
       </div>
+
+      <div class="step-card image-studio-card" id="step4">
+        <div class="step-number">04</div>
+        <div class="step-content">
+          <div class="step-heading"><div><p>СТЪПКА ЧЕТВЪРТА</p><h3>Gemini AI изображения</h3></div><span class="status ai-status">✦ Vercel AI</span></div>
+          <div class="image-studio">
+            <div class="image-form">
+              <label class="field wide"><span>Опиши изображението</span><textarea id="imagePrompt" rows="5" maxlength="1800" placeholder="Напр. Стилна рекламна визия за печат на винил, модерен печатен цех, наситени цветове, свободно място за заглавие..."></textarea></label>
+              <div class="image-options">
+                <label class="select-field"><span>ФОРМАТ</span><select id="imageRatio"><option value="1:1">Instagram / Facebook · 1:1</option><option value="4:5">Instagram портрет · 4:5</option><option value="9:16">Story / Reels · 9:16</option><option value="16:9">Facebook широко · 16:9</option></select></label>
+                <label class="select-field"><span>СТИЛ</span><select id="imageStyle"><option value="advertising">Рекламна фотография</option><option value="minimal">Минималистичен</option><option value="premium">Премиум</option><option value="cinematic">Кинематографичен</option><option value="illustration">Илюстрация</option></select></label>
+              </div>
+              <label class="field"><span>Текст в изображението <small>(по желание)</small></span><input id="imageHeadline" maxlength="100" placeholder="Напр. Печат, който се забелязва"></label>
+              <label class="field"><span>Код за достъп <small>(защитен във Vercel)</small></span><div class="password-wrap"><input id="accessCode" type="password" autocomplete="off" placeholder="Твоят APP_ACCESS_CODE"><button id="toggleCode" type="button" aria-label="Покажи кода">◉</button></div></label>
+              <button class="primary generate-image-btn" id="generateImageBtn">Генерирай изображение <span>✦</span></button>
+              <p class="image-price-note">Gemini може да начисли малка сума за всяко изображение според твоя API план.</p>
+            </div>
+            <div class="image-preview" id="imagePreview">
+              <div class="image-placeholder" id="imagePlaceholder"><span>✦</span><b>Твоята рекламна визия</b><p>Опиши идеята си и Gemini ще я превърне в изображение.</p></div>
+              <div class="image-loading hidden" id="imageLoading"><span class="loader"></span><b>Gemini създава визията...</b><p>Това може да отнеме до минута.</p></div>
+              <img id="generatedImage" class="hidden" alt="Изображение, генерирано с Gemini">
+              <a id="downloadImage" class="secondary download-image hidden" download="trendcraft-gemini.png">Изтегли изображението ↓</a>
+            </div>
+          </div>
+          <div class="vercel-hint"><span>🔒</span><div><b>Ключът остава защитен</b><p>Заявката минава през Vercel функция. <code>GEMINI_API_KEY</code> никога не се изпраща към браузъра.</p></div></div>
+        </div>
+      </div>
     </section>
   </main>
 
