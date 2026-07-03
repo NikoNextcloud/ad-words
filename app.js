@@ -157,7 +157,7 @@ fileInput.onchange = e => readFile(e.target.files[0]);
 drop.addEventListener('drop',e=>readFile(e.dataTransfer.files[0]));
 load();
 
-// Gemini image studio (Vercel serverless endpoint)
+// Cloudflare FLUX image studio (Vercel serverless endpoint)
 const imagePrompt = $('#imagePrompt');
 const generatedImage = $('#generatedImage');
 let generatedObjectUrl = '';
@@ -206,7 +206,7 @@ $('#generateImageBtn').onclick = async () => {
     const download = $('#downloadImage');
     download.href = generatedObjectUrl;
     download.classList.remove('hidden');
-    toast('Изображението е готово.');
+    toast('FLUX изображението е готово.');
   } catch (error) {
     $('#imagePlaceholder').classList.remove('hidden');
     const localHint = location.hostname === '127.0.0.1' || location.hostname === 'localhost';

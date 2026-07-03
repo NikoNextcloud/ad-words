@@ -124,7 +124,7 @@
       <div class="step-card image-studio-card" id="step4">
         <div class="step-number">04</div>
         <div class="step-content">
-          <div class="step-heading"><div><p>СТЪПКА ЧЕТВЪРТА</p><h3>Gemini AI изображения</h3></div><span class="status ai-status">✦ Vercel AI</span></div>
+          <div class="step-heading"><div><p>СТЪПКА ЧЕТВЪРТА</p><h3>FLUX AI изображения</h3></div><span class="status ai-status">✦ Безплатна квота</span></div>
           <div class="image-studio">
             <div class="image-form">
               <label class="field wide"><span>Опиши изображението</span><textarea id="imagePrompt" rows="5" maxlength="1800" placeholder="Напр. Стилна рекламна визия за печат на винил, модерен печатен цех, наситени цветове, свободно място за заглавие..."></textarea></label>
@@ -135,16 +135,16 @@
               <label class="field"><span>Текст в изображението <small>(по желание)</small></span><input id="imageHeadline" maxlength="100" placeholder="Напр. Печат, който се забелязва"></label>
               <label class="field"><span>Код за достъп <small>(защитен във Vercel)</small></span><div class="password-wrap"><input id="accessCode" type="password" autocomplete="off" placeholder="Твоят APP_ACCESS_CODE"><button id="toggleCode" type="button" aria-label="Покажи кода">◉</button></div></label>
               <button class="primary generate-image-btn" id="generateImageBtn">Генерирай изображение <span>✦</span></button>
-              <p class="image-price-note">Gemini може да начисли малка сума за всяко изображение според твоя API план.</p>
+              <p class="image-price-note">Cloudflare Workers AI включва безплатна дневна квота.</p>
             </div>
             <div class="image-preview" id="imagePreview">
-              <div class="image-placeholder" id="imagePlaceholder"><span>✦</span><b>Твоята рекламна визия</b><p>Опиши идеята си и Gemini ще я превърне в изображение.</p></div>
-              <div class="image-loading hidden" id="imageLoading"><span class="loader"></span><b>Gemini създава визията...</b><p>Това може да отнеме до минута.</p></div>
-              <img id="generatedImage" class="hidden" alt="Изображение, генерирано с Gemini">
+              <div class="image-placeholder" id="imagePlaceholder"><span>✦</span><b>Твоята рекламна визия</b><p>Опиши идеята си и FLUX ще я превърне в изображение.</p></div>
+              <div class="image-loading hidden" id="imageLoading"><span class="loader"></span><b>FLUX създава визията...</b><p>Това може да отнеме до минута.</p></div>
+              <img id="generatedImage" class="hidden" alt="Изображение, генерирано с FLUX">
               <a id="downloadImage" class="secondary download-image hidden" download="trendcraft-gemini.jpg">Изтегли изображението ↓</a>
             </div>
           </div>
-          <div class="vercel-hint"><span>🔒</span><div><b>Ключът остава защитен</b><p>Заявката минава през Vercel функция. <code>GEMINI_API_KEY</code> никога не се изпраща към браузъра.</p></div></div>
+          <div class="vercel-hint"><span>🔒</span><div><b>Ключът остава защитен</b><p>Заявката минава през Vercel функция. <code>CLOUDFLARE_API_TOKEN</code> никога не се изпраща към браузъра.</p></div></div>
         </div>
       </div>
     </section>
