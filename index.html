@@ -1,333 +1,130 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="bg">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Рекламен асистент — проучване и обяви</title>
-<style>
-  :root{
-    --bg:#0f0f13; --panel:#17171d; --panel2:#1e1e26; --line:#2a2a34;
-    --text:#f2f0eb; --dim:#8b8b98;
-    --cyan:#00b7d4; --magenta:#e91e8c; --yellow:#f5c518;
-  }
-  *{box-sizing:border-box; margin:0; padding:0}
-  body{background:var(--bg); color:var(--text); font-family:'Segoe UI',system-ui,sans-serif; min-height:100vh; padding-bottom:64px}
-  .cmyk{display:flex; height:6px}
-  .cmyk div{flex:1}
-  .wrap{max-width:860px; margin:0 auto; padding:0 16px}
-  header{padding:40px 0 8px}
-  .eyebrow{font-size:12px; letter-spacing:3px; color:var(--dim); text-transform:uppercase}
-  h1{font-size:clamp(28px,5vw,44px); margin-top:8px; font-weight:800; line-height:1.1}
-  h1 span{background:linear-gradient(90deg,var(--cyan),var(--magenta),var(--yellow)); -webkit-background-clip:text; background-clip:text; -webkit-text-fill-color:transparent}
-  header p{color:var(--dim); margin-top:10px; font-size:15px}
-  .row{display:flex; gap:10px; margin-top:20px; flex-wrap:wrap}
-  input{flex:1 1 260px; background:var(--panel); border:1px solid var(--line); border-radius:10px; padding:14px 16px; color:var(--text); font-size:16px; outline:none; font-family:inherit}
-  input:focus{border-color:var(--magenta)}
-  button.primary{background:var(--magenta); color:#fff; border:none; border-radius:10px; padding:14px 26px; font-size:16px; font-weight:700; cursor:pointer; font-family:inherit}
-  button.primary:disabled{background:var(--panel2); color:var(--dim); cursor:wait}
-  .keyrow{margin-top:12px}
-  .keyrow input{width:100%; font-size:13px; padding:10px 14px}
-  .hint{font-size:12px; color:var(--dim); margin-top:6px; line-height:1.5}
-  .hint a{color:var(--cyan)}
-  .card{background:var(--panel); border:1px solid var(--line); border-radius:14px; padding:22px; margin-top:20px}
-  .card h2{font-size:13px; letter-spacing:2px; text-transform:uppercase}
-  .loading{display:flex; align-items:center; gap:12px}
-  .dots{display:flex; gap:5px}
-  .dots i{width:10px; height:10px; border-radius:50%; animation:pulse 1.2s infinite ease-in-out}
-  .dots i:nth-child(1){background:var(--cyan)}
-  .dots i:nth-child(2){background:var(--magenta); animation-delay:.2s}
-  .dots i:nth-child(3){background:var(--yellow); animation-delay:.4s}
-  @keyframes pulse{0%,100%{opacity:.25; transform:scale(.8)} 50%{opacity:1; transform:scale(1.15)}}
-  .err{margin-top:20px; padding:16px; background:#2a1520; border:1px solid var(--magenta); border-radius:10px; color:#ff9ccb; font-size:14px; line-height:1.6}
-  .kw{margin-top:12px}
-  .kw .top{display:flex; justify-content:space-between; font-size:14px; margin-bottom:5px}
-  .bar{height:7px; background:var(--panel2); border-radius:4px; overflow:hidden}
-  .bar i{display:block; height:100%; border-radius:4px; background:linear-gradient(90deg,var(--cyan),var(--magenta)); transition:width .6s ease}
-  .note{font-size:12px; color:var(--dim); margin-top:4px}
-  .chips{display:flex; flex-wrap:wrap; gap:8px; margin-top:14px}
-  .chip{background:var(--panel2); border:1px solid var(--line); border-radius:20px; padding:7px 14px; font-size:13px}
-  ul.insights{margin-top:16px; padding-left:20px; color:var(--dim); font-size:14px; line-height:1.7}
-  .adcard{border-top:3px solid var(--accent,var(--cyan))}
-  .adhead{display:flex; justify-content:space-between; align-items:center}
-  .copybtn{background:transparent; color:var(--dim); border:1px solid var(--line); border-radius:8px; padding:6px 14px; font-size:13px; cursor:pointer; font-family:inherit}
-  .copybtn.done{background:var(--accent); color:#fff; border-color:var(--accent)}
-  .adtitle{margin-top:14px; font-weight:800; font-size:17px}
-  .adtext{margin-top:10px; white-space:pre-wrap; line-height:1.7; font-size:15px}
-  .tags{margin-top:8px; color:var(--cyan); font-size:14px; line-height:1.8}
-  .empty{margin-top:40px; color:var(--dim); font-size:14px; text-align:center; padding:30px; border:1px dashed var(--line); border-radius:14px}
-  .empty strong{color:var(--text)}
-</style>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#f7f4ec">
+  <meta name="description" content="Безплатен помощник за Google Trends, ключови думи и рекламни текстове.">
+  <title>TrendCraft BG — идеи, които хората търсят</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Playfair+Display:ital,wght@0,700;1,700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-<div class="cmyk"><div style="background:var(--cyan)"></div><div style="background:var(--magenta)"></div><div style="background:var(--yellow)"></div><div style="background:#000"></div></div>
-
-<div class="wrap">
-  <header>
-    <div class="eyebrow">Проучване · Ключови думи · Обяви</div>
-    <h1>Рекламен <span>асистент</span></h1>
-    <p>Въведи тема — асистентът проучва интернет, извлича най-търсените думи и съставя готови обяви за Facebook и Instagram.</p>
+  <div class="noise"></div>
+  <header class="topbar">
+    <a class="brand" href="#top" aria-label="TrendCraft BG начало">
+      <span class="brand-mark">T</span>
+      <span>TrendCraft <b>BG</b></span>
+    </a>
+    <div class="free-pill"><span></span> 100% безплатно</div>
   </header>
 
-  <div class="keyrow">
-    <input id="apikey" type="password" placeholder="Groq API ключ (gsk_…)" autocomplete="off">
-    <div class="hint">Ключът се пази само в твоя браузър и се изпраща към api.groq.com. Вземи безплатен ключ от <a href="https://console.groq.com" target="_blank" rel="noopener">console.groq.com</a> (API Keys).</div>
-  </div>
+  <main id="top">
+    <section class="hero">
+      <div class="hero-copy">
+        <p class="eyebrow">ТЕНДЕНЦИИ · КЛЮЧОВИ ДУМИ · СЪДЪРЖАНИЕ</p>
+        <h1>Превърни търсенията<br>в <em>силни послания.</em></h1>
+        <p class="hero-text">Открий какво интересува хората в България и създай публикации за Facebook и Instagram — без платени инструменти.</p>
+        <button class="primary hero-button" data-scroll="workspace">Започни проучване <span>↘</span></button>
+      </div>
+      <div class="hero-visual" aria-hidden="true">
+        <div class="orbit orbit-one"></div><div class="orbit orbit-two"></div>
+        <div class="trend-card">
+          <div class="mini-head"><span>Интерес във времето</span><b>+38%</b></div>
+          <svg viewBox="0 0 420 170" role="img">
+            <defs><linearGradient id="fill" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ff6b35" stop-opacity=".32"/><stop offset="1" stop-color="#ff6b35" stop-opacity="0"/></linearGradient></defs>
+            <path class="area" d="M0,143 C45,137 55,110 95,119 C137,128 143,91 184,96 C225,101 238,58 278,68 C319,78 335,30 377,42 C394,47 406,28 420,18 L420,170 L0,170Z"/>
+            <path class="line" d="M0,143 C45,137 55,110 95,119 C137,128 143,91 184,96 C225,101 238,58 278,68 C319,78 335,30 377,42 C394,47 406,28 420,18"/>
+          </svg>
+          <div class="mini-labels"><span>ЯНУ</span><span>МАР</span><span>МАЙ</span><span>ЮЛИ</span><span>СЕП</span><span>ДЕК</span></div>
+        </div>
+        <div class="float-tag tag-one">#печатнавинил <b>92</b></div>
+        <div class="float-tag tag-two">набира популярност ↑</div>
+      </div>
+    </section>
 
-  <div class="row">
-    <input id="query" placeholder="напр. „печат на винил“, „брандирани тениски“…">
-    <button class="primary" id="go">Проучи</button>
-  </div>
+    <section class="workspace" id="workspace">
+      <div class="section-title">
+        <p class="eyebrow">ТВОЕТО ПРОУЧВАНЕ</p>
+        <h2>От идея до готова публикация</h2>
+        <p>Следвай трите стъпки. Данните остават само в твоя браузър.</p>
+      </div>
 
-  <div id="out"></div>
-</div>
+      <div class="step-card active" id="step1">
+        <div class="step-number">01</div>
+        <div class="step-content">
+          <div class="step-heading"><div><p>СТЪПКА ПЪРВА</p><h3>Какво искаш да проучиш?</h3></div><span class="status">В момента</span></div>
+          <div class="form-grid">
+            <label class="field wide"><span>Тема, продукт или услуга</span><div class="input-wrap"><i>⌕</i><input id="topic" value="Печат на винил" placeholder="Напр. печат на винил" autocomplete="off"></div></label>
+            <label class="field"><span>Град / район <small>(по желание)</small></span><input id="location" placeholder="Напр. София"></label>
+            <label class="field"><span>Име на бизнеса <small>(по желание)</small></span><input id="business" placeholder="Напр. Print Studio"></label>
+            <label class="field"><span>Основно предимство</span><input id="benefit" placeholder="Напр. бърза изработка"></label>
+            <label class="field"><span>Контакт / призив</span><input id="contact" placeholder="Напр. Пишете ни на лично"></label>
+          </div>
+          <div class="action-row">
+            <button class="primary" id="researchBtn">Проучи темата <span>→</span></button>
+            <button class="text-button" id="demoBtn">Зареди пример</button>
+          </div>
+        </div>
+      </div>
 
-<script>
-'use strict';
-var out = document.getElementById('out');
-var apikeyInput = document.getElementById('apikey');
-var queryInput = document.getElementById('query');
-var goBtn = document.getElementById('go');
+      <div class="step-card" id="step2">
+        <div class="step-number">02</div>
+        <div class="step-content">
+          <div class="step-heading"><div><p>СТЪПКА ВТОРА</p><h3>Данни от Google Trends</h3></div><span class="status muted">Безплатно</span></div>
+          <div class="trends-guide">
+            <div class="guide-copy">
+              <div class="google-mark"><span>G</span> Google Trends</div>
+              <h4>Провери интереса за България</h4>
+              <p>Отвори готовото търсене, разгледай „Свързани заявки“ и при желание свали CSV от иконата за изтегляне.</p>
+              <div class="guide-actions">
+                <a class="secondary" id="trendsLink" target="_blank" rel="noopener">Отвори в Google Trends ↗</a>
+                <a class="ghost-link" id="searchLink" target="_blank" rel="noopener">Виж резултати в Google ↗</a>
+              </div>
+            </div>
+            <label class="dropzone" id="dropzone">
+              <input type="file" id="csvFile" accept=".csv,text/csv">
+              <span class="upload-icon">⇧</span>
+              <b>Пусни CSV файла тук</b>
+              <small>или натисни, за да го избереш</small>
+              <em>Google Trends CSV · до 5 MB</em>
+            </label>
+          </div>
+          <div class="manual-box">
+            <label class="field wide"><span>Свързани търсения <small>(по едно на ред или разделени със запетая)</small></span><textarea id="manualKeywords" rows="3" placeholder="печат на винил цена, рекламни винили, широкоформатен печат"></textarea></label>
+            <button class="secondary compact" id="analyzeManualBtn">Анализирай думите</button>
+          </div>
+          <div id="keywordResults" class="keyword-results hidden">
+            <div class="result-head"><div><p>ОТКРИТИ ВЪЗМОЖНОСТИ</p><h4>Ключови фрази</h4></div><span id="keywordCount"></span></div>
+            <div id="keywordList" class="keyword-list"></div>
+            <p class="score-note">Оценката показва относителен потенциал, а не точен брой месечни търсения.</p>
+          </div>
+        </div>
+      </div>
 
-try { apikeyInput.value = localStorage.getItem('groq_key') || ''; } catch(e){}
-apikeyInput.addEventListener('change', function(){
-  try { localStorage.setItem('groq_key', apikeyInput.value.trim()); } catch(e){}
-});
+      <div class="step-card" id="step3">
+        <div class="step-number">03</div>
+        <div class="step-content">
+          <div class="step-heading"><div><p>СТЪПКА ТРЕТА</p><h3>Създай готови текстове</h3></div><span class="status muted">Без AI такси</span></div>
+          <div class="generator-controls">
+            <div class="platform-tabs" role="tablist">
+              <button class="platform active" data-platform="facebook">f &nbsp; Facebook</button>
+              <button class="platform" data-platform="instagram">◎ &nbsp; Instagram</button>
+            </div>
+            <label class="select-field"><span>СТИЛ</span><select id="tone"><option value="selling">Продаващ</option><option value="professional">Професионален</option><option value="friendly">Приятелски</option><option value="premium">Премиум</option></select></label>
+            <button class="primary" id="generateBtn">Създай 3 варианта ✦</button>
+          </div>
+          <div id="postsEmpty" class="posts-empty"><span>✦</span><b>Твоите текстове ще се появят тук</b><p>Добави тема и ключови думи, след което натисни „Създай 3 варианта“.</p></div>
+          <div id="postsGrid" class="posts-grid hidden"></div>
+        </div>
+      </div>
+    </section>
+  </main>
 
-function esc(s){
-  return String(s == null ? '' : s)
-    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-}
-
-function loadingHTML(msg){
-  return '<div class="card loading"><div class="dots"><i></i><i></i><i></i></div>' +
-         '<span style="color:var(--dim);font-size:14px">' + esc(msg) + '</span></div>';
-}
-
-function friendlyError(status, msg){
-  if (status === 401) return 'Невалиден API ключ. Провери го в console.groq.com и го въведи отново в горното поле.';
-  if (status === 403) return 'Ключът няма достъп (403). Провери дали има кредит в акаунта и дали ключът е активен.';
-  if (status === 413) return 'Токен-лимитът на минута на безплатния план е достигнат (413). ' + (msg ? '[' + msg + '] ' : '') + 'Изчакай около минута и опитай пак.';
-  if (status === 429) return 'Достигнат лимит на заявки (429). Безплатният план има дневен лимит — изчакай минута или опитай утре.';
-  if (status === 529 || status === 503) return 'Groq сървърите са претоварени в момента. Изчакай малко и опитай пак.';
-  return 'Грешка от API (' + status + ')' + (msg ? ': ' + msg : '') + '.';
-}
-
-/* ── Извикване на Groq (groq/compound с вградено web search) ── */
-function groqBody(prompt, model){
-  return JSON.stringify({
-    model: model,
-    max_completion_tokens: 1200,
-    messages: [{ role: 'user', content: prompt }]
-  });
-}
-
-function extractGroqText(data){
-  try { return data.choices[0].message.content || ''; }
-  catch(e){ return ''; }
-}
-
-function doFetch(url, apiKey, bodyStr){
-  return fetch(url, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': 'Bearer ' + apiKey
-    },
-    body: bodyStr
-  }).then(function(r){
-    return r.json().catch(function(){ return {}; }).then(function(data){
-      if (!r.ok || data.error){
-        var m = '';
-        if (data.error){ m = typeof data.error === 'string' ? data.error : (data.error.message || ''); }
-        var err = new Error(friendlyError(r.status, m));
-        err.status = r.status;
-        throw err;
-      }
-      return extractGroqText(data);
-    });
-  });
-}
-
-function callClaude(apiKey, prompt, useSearch){
-  var direct = 'https://api.groq.com/openai/v1/chat/completions';
-
-  function attempt(model){
-    return doFetch(direct, apiKey, groqBody(prompt, model));
-  }
-
-  return attempt('groq/compound').catch(function(e){
-    // 413/429 = токен или заявков лимит -> пробваме по-лекия compound-mini
-    if (e.status === 413 || e.status === 429){
-      return attempt('groq/compound-mini');
-    }
-    if (e.name === 'TypeError' || (e.message && /fetch/i.test(e.message) && !e.status)){
-      var proxied = 'https://corsproxy.io/?url=' + encodeURIComponent(direct);
-      return doFetch(proxied, apiKey, groqBody(prompt, 'groq/compound')).catch(function(){
-        throw new Error('Заявката не стигна до Groq (мрежова или CORS блокировка). Отвори сайта през https адрес (GitHub Pages), изключи adblock и опитай пак.');
-      });
-    }
-    throw e;
-  });
-}
-
-/* ── Промпт: редов формат вместо JSON — не може да се счупи ── */
-function buildPrompt(q){
-  return 'Маркетинг експерт за България. Използвай web search (1 търсене) за: "' + q + '" — най-търсени ключови думи и работещи обяви.\n' +
-  'Отговори САМО в този редов формат (нищо друго):\n' +
-  'KW|дума|0-100|бележка  (7 реда, по популярност)\n' +
-  'PH|търсена фраза  (4 реда)\n' +
-  'IN|извод  (3 реда)\n' +
-  'FBH|заглавие Facebook\n' +
-  'FBT|Facebook текст: 3-4 изречения, емоджита, призив за действие, на един ред\n' +
-  'IGH|заглавие Instagram\n' +
-  'IGT|Instagram текст: кратък, емоджита, един ред\n' +
-  'IGX|10 хаштага с интервали (BG+EN)\n' +
-  'SH|кратка обява 1-2 изречения\n' +
-  'Всичко на български, продаващ стил, вплитай най-търсените думи.';
-}
-
-/* ── Парсване на редовия формат ── */
-function parseLines(text){
-  var r = { keywords: [], phrases: [], insights: [], fb: {}, ig: {}, sh: {} };
-  var lines = text.split('\n');
-  for (var i = 0; i < lines.length; i++){
-    var line = lines[i].trim();
-    var p = line.indexOf('|');
-    if (p < 2 || p > 4) continue;
-    var code = line.slice(0, p).toUpperCase();
-    var rest = line.slice(p + 1).trim();
-    if (!rest) continue;
-    if (code === 'KW'){
-      var parts = rest.split('|');
-      r.keywords.push({
-        word: (parts[0] || '').trim(),
-        popularity: Math.max(0, Math.min(100, parseInt(parts[1], 10) || 50)),
-        note: (parts[2] || '').trim()
-      });
-    }
-    else if (code === 'PH') r.phrases.push(rest);
-    else if (code === 'IN') r.insights.push(rest);
-    else if (code === 'FBH') r.fb.headline = rest;
-    else if (code === 'FBT') r.fb.text = (r.fb.text ? r.fb.text + ' ' : '') + rest;
-    else if (code === 'IGH') r.ig.headline = rest;
-    else if (code === 'IGT') r.ig.text = (r.ig.text ? r.ig.text + ' ' : '') + rest;
-    else if (code === 'IGX') r.ig.hashtags = rest;
-    else if (code === 'SH') r.sh.text = (r.sh.text ? r.sh.text + ' ' : '') + rest;
-  }
-  return r;
-}
-
-function run(){
-  var q = queryInput.value.trim();
-  var key = apikeyInput.value.trim();
-  if (!q) return;
-  if (q.length > 120) q = q.slice(0, 120);
-  if (!key){
-    out.innerHTML = '<div class="err">Въведи Anthropic API ключ в горното поле, за да работи проучването.</div>';
-    return;
-  }
-  try { localStorage.setItem('groq_key', key); } catch(e){}
-
-  goBtn.disabled = true;
-  goBtn.textContent = 'Проучвам…';
-  out.innerHTML = loadingHTML('Проучвам интернет за „' + q + '“… (30-60 сек)');
-
-  callClaude(key, buildPrompt(q), true)
-    .then(function(text){
-      var r = parseLines(text);
-      if (!r.keywords.length && !r.fb.text){
-        throw new Error('Отговорът дойде в неочакван формат. Натисни „Проучи“ още веднъж — обикновено вторият опит минава.');
-      }
-      render(r, q);
-    })
-    .catch(function(e){
-      out.innerHTML = '<div class="err">' + esc(e.message) + '</div>';
-    })
-    .then(function(){
-      goBtn.disabled = false;
-      goBtn.textContent = 'Проучи';
-    });
-}
-
-function render(r, q){
-  var html = '';
-  var kwMax = 1;
-  for (var i = 0; i < r.keywords.length; i++) kwMax = Math.max(kwMax, r.keywords[i].popularity);
-
-  if (r.keywords.length){
-    html += '<section class="card"><h2 style="color:var(--cyan)">Най-търсени ключови думи</h2>';
-    for (var i = 0; i < r.keywords.length; i++){
-      var k = r.keywords[i];
-      html += '<div class="kw"><div class="top"><strong>' + esc(k.word) + '</strong>' +
-              '<span style="color:var(--dim)">' + k.popularity + '</span></div>' +
-              '<div class="bar"><i style="width:' + (k.popularity / kwMax * 100) + '%"></i></div>' +
-              (k.note ? '<div class="note">' + esc(k.note) + '</div>' : '') + '</div>';
-    }
-    html += '</section>';
-  }
-
-  if (r.phrases.length || r.insights.length){
-    html += '<section class="card"><h2 style="color:var(--yellow)">Популярни търсения</h2><div class="chips">';
-    for (var i = 0; i < r.phrases.length; i++) html += '<span class="chip">🔍 ' + esc(r.phrases[i]) + '</span>';
-    html += '</div>';
-    if (r.insights.length){
-      html += '<ul class="insights">';
-      for (var i = 0; i < r.insights.length; i++) html += '<li>' + esc(r.insights[i]) + '</li>';
-      html += '</ul>';
-    }
-    html += '</section>';
-  }
-
-  var ads = [
-    { label:'Facebook обява', accent:'#1877f2', head:r.fb.headline, text:r.fb.text, tags:'' },
-    { label:'Instagram пост', accent:'#e91e8c', head:r.ig.headline, text:r.ig.text, tags:r.ig.hashtags || '' },
-    { label:'Кратка спонсорирана обява', accent:'#f5c518', head:'', text:r.sh.text, tags:'' }
-  ];
-  var copies = [];
-  for (var i = 0; i < ads.length; i++){
-    var a = ads[i];
-    if (!a.text) continue;
-    var full = (a.head ? a.head + '\n\n' : '') + a.text + (a.tags ? '\n\n' + a.tags : '');
-    copies.push(full);
-    html += '<section class="card adcard" style="--accent:' + a.accent + '">' +
-      '<div class="adhead"><h2 style="color:' + a.accent + '">' + a.label + '</h2>' +
-      '<button class="copybtn" data-i="' + (copies.length - 1) + '">Копирай</button></div>' +
-      (a.head ? '<div class="adtitle">' + esc(a.head) + '</div>' : '') +
-      '<p class="adtext">' + esc(a.text) + '</p>' +
-      (a.tags ? '<div class="tags">' + esc(a.tags) + '</div>' : '') +
-      '</section>';
-  }
-
-  out.innerHTML = html;
-  var btns = out.querySelectorAll('.copybtn');
-  for (var i = 0; i < btns.length; i++){
-    (function(btn){
-      btn.addEventListener('click', function(){
-        var t = copies[parseInt(btn.getAttribute('data-i'), 10)] || '';
-        function done(){
-          btn.classList.add('done'); btn.textContent = '✓ Копирано';
-          setTimeout(function(){ btn.classList.remove('done'); btn.textContent = 'Копирай'; }, 1500);
-        }
-        if (navigator.clipboard && navigator.clipboard.writeText){
-          navigator.clipboard.writeText(t).then(done, function(){ fallbackCopy(t); done(); });
-        } else { fallbackCopy(t); done(); }
-      });
-    })(btns[i]);
-  }
-}
-
-function fallbackCopy(t){
-  var ta = document.createElement('textarea');
-  ta.value = t; ta.style.position = 'fixed'; ta.style.opacity = '0';
-  document.body.appendChild(ta); ta.select();
-  try { document.execCommand('copy'); } catch(e){}
-  document.body.removeChild(ta);
-}
-
-goBtn.addEventListener('click', run);
-queryInput.addEventListener('keydown', function(e){ if (e.key === 'Enter') run(); });
-
-out.innerHTML = '<div class="empty">Пример: напиши <strong>„печат на винил“</strong> и натисни „Проучи“ —<br>ще получиш ключови думи, популярни търсения и три готови обяви.</div>';
-</script>
+  <footer><div class="brand"><span class="brand-mark">T</span><span>TrendCraft <b>BG</b></span></div><p>Създадено за малкия бизнес в България.</p><span>Данните се обработват локално · 2026</span></footer>
+  <div class="toast" id="toast" role="status"></div>
+  <script src="app.js"></script>
 </body>
 </html>
