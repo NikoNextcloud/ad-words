@@ -69,8 +69,8 @@
   </header>
 
   <div class="keyrow">
-    <input id="apikey" type="password" placeholder="xAI (Grok) API ключ (xai-…)" autocomplete="off">
-    <div class="hint">Ключът се пази само в твоя браузър и се изпраща към api.x.ai. Вземи безплатен ключ от <a href="https://console.x.ai" target="_blank" rel="noopener">console.x.ai</a>.</div>
+    <input id="apikey" type="password" placeholder="Groq API ключ (gsk_…)" autocomplete="off">
+    <div class="hint">Ключът се пази само в твоя браузър и се изпраща към api.groq.com. Вземи безплатен ключ от <a href="https://console.groq.com" target="_blank" rel="noopener">console.groq.com</a> (API Keys).</div>
   </div>
 
   <div class="row">
@@ -88,9 +88,9 @@ var apikeyInput = document.getElementById('apikey');
 var queryInput = document.getElementById('query');
 var goBtn = document.getElementById('go');
 
-try { apikeyInput.value = localStorage.getItem('xai_key') || ''; } catch(e){}
+try { apikeyInput.value = localStorage.getItem('groq_key') || ''; } catch(e){}
 apikeyInput.addEventListener('change', function(){
-  try { localStorage.setItem('xai_key', apikeyInput.value.trim()); } catch(e){}
+  try { localStorage.setItem('groq_key', apikeyInput.value.trim()); } catch(e){}
 });
 
 function esc(s){
@@ -104,37 +104,26 @@ function loadingHTML(msg){
 }
 
 function friendlyError(status, msg){
-  if (status === 401) return 'Невалиден API ключ. Провери го в console.x.ai и го въведи отново в горното поле.';
+  if (status === 401) return 'Невалиден API ключ. Провери го в console.groq.com и го въведи отново в горното поле.';
   if (status === 403) return 'Ключът няма достъп (403). Провери дали има кредит в акаунта и дали ключът е активен.';
   if (status === 413) return 'Заявката е твърде голяма (413). Ползвай по-кратка тема (2-4 думи) и опитай пак.';
-  if (status === 429) return 'Достигнат лимит на заявки (429). Изчакай минута и опитай отново.';
-  if (status === 529 || status === 503) return 'xAI сървърите са претоварени в момента. Изчакай малко и опитай пак.';
+  if (status === 429) return 'Достигнат лимит на заявки (429). Безплатният план има дневен лимит — изчакай минута или опитай утре.';
+  if (status === 529 || status === 503) return 'Groq сървърите са претоварени в момента. Изчакай малко и опитай пак.';
   return 'Грешка от API (' + status + ')' + (msg ? ': ' + msg : '') + '.';
 }
 
-/* ── Извикване на Grok (xAI Responses API) ── */
-function grokBody(prompt, useSearch){
-  var body = {
-    model: 'grok-4.3',
-    max_output_tokens: 2500,
-    input: [{ role: 'user', content: prompt }]
-  };
-  if (useSearch) body.tools = [{ type: 'web_search' }];
-  return JSON.stringify(body);
+/* ── Извикване на Groq (groq/compound с вградено web search) ── */
+function groqBody(prompt){
+  return JSON.stringify({
+    model: 'groq/compound',
+    max_completion_tokens: 2500,
+    messages: [{ role: 'user', content: prompt }]
+  });
 }
 
-function extractGrokText(data){
-  var text = '';
-  var outArr = data.output || [];
-  for (var i = 0; i < outArr.length; i++){
-    var item = outArr[i];
-    if (item.type === 'message' && item.content){
-      for (var j = 0; j < item.content.length; j++){
-        if (item.content[j].type === 'output_text') text += item.content[j].text + '\n';
-      }
-    }
-  }
-  return text;
+function extractGroqText(data){
+  try { return data.choices[0].message.content || ''; }
+  catch(e){ return ''; }
 }
 
 function doFetch(url, apiKey, bodyStr){
@@ -152,26 +141,20 @@ function doFetch(url, apiKey, bodyStr){
         if (data.error){ m = typeof data.error === 'string' ? data.error : (data.error.message || ''); }
         throw new Error(friendlyError(r.status, m));
       }
-      return extractGrokText(data);
+      return extractGroqText(data);
     });
   });
 }
 
 function callClaude(apiKey, prompt, useSearch){
-  var bodyStr = grokBody(prompt, useSearch);
-  var direct = 'https://api.x.ai/v1/responses';
+  var bodyStr = groqBody(prompt);
+  var direct = 'https://api.groq.com/openai/v1/chat/completions';
   return doFetch(direct, apiKey, bodyStr).catch(function(e){
-    if (e && e.message && e.message.indexOf('Грешка от API') === -1 &&
-        e.message.indexOf('ключ') === -1 && e.message.indexOf('лимит') === -1 &&
-        e.message.indexOf('претоварени') === -1 && e.message.indexOf('твърде голяма') === -1 &&
-        e instanceof TypeError === false && e.name !== 'TypeError'){
-      throw e;
-    }
     if (e.name === 'TypeError' || (e.message && /fetch/i.test(e.message))){
       // Мрежова/CORS блокировка — опит през CORS proxy
       var proxied = 'https://corsproxy.io/?url=' + encodeURIComponent(direct);
       return doFetch(proxied, apiKey, bodyStr).catch(function(){
-        throw new Error('Заявката не стигна до xAI (мрежова или CORS блокировка). Отвори сайта през https адрес (GitHub Pages), изключи adblock, и опитай пак.');
+        throw new Error('Заявката не стигна до Groq (мрежова или CORS блокировка). Отвори сайта през https адрес (GitHub Pages), изключи adblock и опитай пак.');
       });
     }
     throw e;
@@ -180,7 +163,7 @@ function callClaude(apiKey, prompt, useSearch){
 
 /* ── Промпт: редов формат вместо JSON — не може да се счупи ── */
 function buildPrompt(q){
-  return 'Ти си експерт по дигитален маркетинг за българския пазар. Направи кратко интернет проучване (web search, максимум 3 търсения) за темата: "' + q + '" в България — кои ключови думи се търсят най-често и какви обяви работят.\n\n' +
+  return 'Ти си експерт по дигитален маркетинг за българския пазар. ЗАДЪЛЖИТЕЛНО използвай web search (1-2 търсения), за да проучиш темата: "' + q + '" в България — кои ключови думи се търсят най-често и какви обяви работят.\n\n' +
   'След това отговори САМО в следния редов формат, ред по ред, без нищо друго преди или след:\n\n' +
   'KW|дума или фраза|число 0-100|кратка бележка\n' +
   '(6 до 8 реда KW, сортирани по популярност)\n' +
@@ -237,7 +220,7 @@ function run(){
     out.innerHTML = '<div class="err">Въведи Anthropic API ключ в горното поле, за да работи проучването.</div>';
     return;
   }
-  try { localStorage.setItem('xai_key', key); } catch(e){}
+  try { localStorage.setItem('groq_key', key); } catch(e){}
 
   goBtn.disabled = true;
   goBtn.textContent = 'Проучвам…';
