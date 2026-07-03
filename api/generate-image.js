@@ -25,7 +25,7 @@ export default async function handler(req, res) {
   try {
     const gemini = await fetch('https://generativelanguage.googleapis.com/v1beta/interactions', {
       method: 'POST', headers: {'Content-Type':'application/json', 'x-goog-api-key':apiKey},
-      body: JSON.stringify({model:'gemini-3.1-flash-image', input:fullPrompt, response_format:{type:'image', mime_type:'image/png', aspect_ratio:ratio, image_size:'1K'}}), signal: controller.signal
+      body: JSON.stringify({model:'gemini-3.1-flash-image', input:fullPrompt, response_format:{type:'image', mime_type:'image/jpeg', aspect_ratio:ratio, image_size:'1K'}}), signal: controller.signal
     });
     const data = await gemini.json();
     if (!gemini.ok) return res.status(gemini.status).json({error:data?.error?.message || 'Gemini не успя да генерира изображение.'});
@@ -33,7 +33,7 @@ export default async function handler(req, res) {
     if (!image?.data) for (const step of data.steps || []) { const found=(step.content || []).find(item=>item.type==='image' && item.data); if(found) image=found; }
     if (!image?.data) return res.status(502).json({error:'Gemini не върна изображение.'});
     const buffer = Buffer.from(image.data, 'base64');
-    res.setHeader('Content-Type', image.mime_type || image.mimeType || 'image/png');
+    res.setHeader('Content-Type', image.mime_type || image.mimeType || 'image/jpeg');
     res.setHeader('Content-Length', buffer.length);
     res.setHeader('Cache-Control', 'private, no-store');
     return res.status(200).send(buffer);
