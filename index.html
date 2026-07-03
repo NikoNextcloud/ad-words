@@ -106,17 +106,17 @@ function loadingHTML(msg){
 function friendlyError(status, msg){
   if (status === 401) return 'Невалиден API ключ. Провери го в console.groq.com и го въведи отново в горното поле.';
   if (status === 403) return 'Ключът няма достъп (403). Провери дали има кредит в акаунта и дали ключът е активен.';
-  if (status === 413) return 'Заявката е твърде голяма (413). Ползвай по-кратка тема (2-4 думи) и опитай пак.';
+  if (status === 413) return 'Токен-лимитът на минута на безплатния план е достигнат (413). ' + (msg ? '[' + msg + '] ' : '') + 'Изчакай около минута и опитай пак.';
   if (status === 429) return 'Достигнат лимит на заявки (429). Безплатният план има дневен лимит — изчакай минута или опитай утре.';
   if (status === 529 || status === 503) return 'Groq сървърите са претоварени в момента. Изчакай малко и опитай пак.';
   return 'Грешка от API (' + status + ')' + (msg ? ': ' + msg : '') + '.';
 }
 
 /* ── Извикване на Groq (groq/compound с вградено web search) ── */
-function groqBody(prompt){
+function groqBody(prompt, model){
   return JSON.stringify({
-    model: 'groq/compound',
-    max_completion_tokens: 2500,
+    model: model,
+    max_completion_tokens: 1200,
     messages: [{ role: 'user', content: prompt }]
   });
 }
@@ -139,7 +139,9 @@ function doFetch(url, apiKey, bodyStr){
       if (!r.ok || data.error){
         var m = '';
         if (data.error){ m = typeof data.error === 'string' ? data.error : (data.error.message || ''); }
-        throw new Error(friendlyError(r.status, m));
+        var err = new Error(friendlyError(r.status, m));
+        err.status = r.status;
+        throw err;
       }
       return extractGroqText(data);
     });
@@ -147,13 +149,20 @@ function doFetch(url, apiKey, bodyStr){
 }
 
 function callClaude(apiKey, prompt, useSearch){
-  var bodyStr = groqBody(prompt);
   var direct = 'https://api.groq.com/openai/v1/chat/completions';
-  return doFetch(direct, apiKey, bodyStr).catch(function(e){
-    if (e.name === 'TypeError' || (e.message && /fetch/i.test(e.message))){
-      // Мрежова/CORS блокировка — опит през CORS proxy
+
+  function attempt(model){
+    return doFetch(direct, apiKey, groqBody(prompt, model));
+  }
+
+  return attempt('groq/compound').catch(function(e){
+    // 413/429 = токен или заявков лимит -> пробваме по-лекия compound-mini
+    if (e.status === 413 || e.status === 429){
+      return attempt('groq/compound-mini');
+    }
+    if (e.name === 'TypeError' || (e.message && /fetch/i.test(e.message) && !e.status)){
       var proxied = 'https://corsproxy.io/?url=' + encodeURIComponent(direct);
-      return doFetch(proxied, apiKey, bodyStr).catch(function(){
+      return doFetch(proxied, apiKey, groqBody(prompt, 'groq/compound')).catch(function(){
         throw new Error('Заявката не стигна до Groq (мрежова или CORS блокировка). Отвори сайта през https адрес (GitHub Pages), изключи adblock и опитай пак.');
       });
     }
@@ -163,21 +172,18 @@ function callClaude(apiKey, prompt, useSearch){
 
 /* ── Промпт: редов формат вместо JSON — не може да се счупи ── */
 function buildPrompt(q){
-  return 'Ти си експерт по дигитален маркетинг за българския пазар. ЗАДЪЛЖИТЕЛНО използвай web search (1-2 търсения), за да проучиш темата: "' + q + '" в България — кои ключови думи се търсят най-често и какви обяви работят.\n\n' +
-  'След това отговори САМО в следния редов формат, ред по ред, без нищо друго преди или след:\n\n' +
-  'KW|дума или фраза|число 0-100|кратка бележка\n' +
-  '(6 до 8 реда KW, сортирани по популярност)\n' +
-  'PH|популярна търсена фраза\n' +
-  '(4 до 5 реда PH)\n' +
-  'IN|кратък извод от проучването\n' +
-  '(3 реда IN)\n' +
-  'FBH|заглавие за Facebook обява\n' +
-  'FBT|пълен текст за Facebook: 3-5 изречения с емоджита и призив за действие, вплитащ най-търсените думи (всичко на ЕДИН ред, без нови редове)\n' +
-  'IGH|заглавие за Instagram\n' +
-  'IGT|текст за Instagram: по-кратък, визуален стил, с емоджита (на един ред)\n' +
-  'IGX|8-12 хаштага разделени с интервал, микс български и английски\n' +
-  'SH|кратка спонсорирана обява от 1-2 изречения\n\n' +
-  'Правила: всеки ред започва с код и |, съдържанието е на един ред. Български език, естествен продаващ стил.';
+  return 'Маркетинг експерт за България. Използвай web search (1 търсене) за: "' + q + '" — най-търсени ключови думи и работещи обяви.\n' +
+  'Отговори САМО в този редов формат (нищо друго):\n' +
+  'KW|дума|0-100|бележка  (7 реда, по популярност)\n' +
+  'PH|търсена фраза  (4 реда)\n' +
+  'IN|извод  (3 реда)\n' +
+  'FBH|заглавие Facebook\n' +
+  'FBT|Facebook текст: 3-4 изречения, емоджита, призив за действие, на един ред\n' +
+  'IGH|заглавие Instagram\n' +
+  'IGT|Instagram текст: кратък, емоджита, един ред\n' +
+  'IGX|10 хаштага с интервали (BG+EN)\n' +
+  'SH|кратка обява 1-2 изречения\n' +
+  'Всичко на български, продаващ стил, вплитай най-търсените думи.';
 }
 
 /* ── Парсване на редовия формат ── */
