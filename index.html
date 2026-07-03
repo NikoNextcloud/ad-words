@@ -26,7 +26,7 @@
   button.primary{background:var(--magenta); color:#fff; border:none; border-radius:10px; padding:14px 26px; font-size:16px; font-weight:700; cursor:pointer; font-family:inherit}
   button.primary:disabled{background:var(--panel2); color:var(--dim); cursor:wait}
   .keyrow{margin-top:12px}
-  .keyrow input{font-size:13px; padding:10px 14px; width:100%}
+  .keyrow input{width:100%; font-size:13px; padding:10px 14px}
   .hint{font-size:12px; color:var(--dim); margin-top:6px; line-height:1.5}
   .hint a{color:var(--cyan)}
   .card{background:var(--panel); border:1px solid var(--line); border-radius:14px; padding:22px; margin-top:20px}
@@ -38,7 +38,7 @@
   .dots i:nth-child(2){background:var(--magenta); animation-delay:.2s}
   .dots i:nth-child(3){background:var(--yellow); animation-delay:.4s}
   @keyframes pulse{0%,100%{opacity:.25; transform:scale(.8)} 50%{opacity:1; transform:scale(1.15)}}
-  .err{margin-top:20px; padding:16px; background:#2a1520; border:1px solid var(--magenta); border-radius:10px; color:#ff9ccb; font-size:14px}
+  .err{margin-top:20px; padding:16px; background:#2a1520; border:1px solid var(--magenta); border-radius:10px; color:#ff9ccb; font-size:14px; line-height:1.6}
   .kw{margin-top:12px}
   .kw .top{display:flex; justify-content:space-between; font-size:14px; margin-bottom:5px}
   .bar{height:7px; background:var(--panel2); border-radius:4px; overflow:hidden}
@@ -69,8 +69,8 @@
   </header>
 
   <div class="keyrow">
-    <input id="apikey" type="password" placeholder="Groq API ключ (gsk_…)">
-    <div class="hint">Ключът се пази само в твоя браузър (localStorage) и се изпраща единствено към api.groq.com. Вземи безплатен ключ от <a href="https://console.groq.com/keys" target="_blank" rel="noopener">console.groq.com/keys</a>.</div>
+    <input id="apikey" type="password" placeholder="Anthropic API ключ (sk-ant-…)" autocomplete="off">
+    <div class="hint">Ключът се пази само в твоя браузър и се изпраща единствено към api.anthropic.com. Вземи ключ от <a href="https://console.anthropic.com" target="_blank" rel="noopener">console.anthropic.com</a>.</div>
   </div>
 
   <div class="row">
@@ -82,160 +82,233 @@
 </div>
 
 <script>
-const GROQ_URL = "https://api.groq.com/openai/v1/chat/completions";
-const $ = s => document.querySelector(s);
-const out = $('#out');
-const apikeyInput = $('#apikey');
-apikeyInput.value = localStorage.getItem('groq_key') || '';
-apikeyInput.addEventListener('change', () => localStorage.setItem('groq_key', apikeyInput.value.trim()));
+'use strict';
+var out = document.getElementById('out');
+var apikeyInput = document.getElementById('apikey');
+var queryInput = document.getElementById('query');
+var goBtn = document.getElementById('go');
 
-function esc(s){ const d=document.createElement('div'); d.textContent=s??''; return d.innerHTML; }
+try { apikeyInput.value = localStorage.getItem('anthropic_key') || ''; } catch(e){}
+apikeyInput.addEventListener('change', function(){
+  try { localStorage.setItem('anthropic_key', apikeyInput.value.trim()); } catch(e){}
+});
 
-// ── Устойчиво извличане на JSON ──
-function extractJSON(text){
-  let t = String(text).replace(/```json/gi,'').replace(/```/g,'');
-  const a = t.indexOf('{'), b = t.lastIndexOf('}');
-  if(a===-1 || b===-1) throw new Error('Няма JSON в отговора');
-  t = t.slice(a, b+1);
-  try { return JSON.parse(t); } catch(e){}
-  // чести поправки: висящи запетаи, контролни символи
-  let fixed = t
-    .replace(/,\s*([\]}])/g, '$1')
-    .replace(/[\u0000-\u001f]+/g, ' ');
-  try { return JSON.parse(fixed); } catch(e){}
-  // "умни" кавички вътре в стойности
-  fixed = fixed.replace(/[„""“]/g, "'");
-  return JSON.parse(fixed);
+function esc(s){
+  return String(s == null ? '' : s)
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 
 function loadingHTML(msg){
-  return `<div class="card loading"><div class="dots"><i></i><i></i><i></i></div><span style="color:var(--dim);font-size:14px">${esc(msg)}</span></div>`;
+  return '<div class="card loading"><div class="dots"><i></i><i></i><i></i></div>' +
+         '<span style="color:var(--dim);font-size:14px">' + esc(msg) + '</span></div>';
 }
 
-async function callGroq(apiKey, prompt, model){
-  const r = await fetch(GROQ_URL, {
-    method: "POST",
+function friendlyError(status, msg){
+  if (status === 401) return 'Невалиден API ключ. Провери го в console.anthropic.com и го въведи отново в горното поле.';
+  if (status === 403) return 'Ключът няма достъп (403). Провери дали има кредит в акаунта и дали ключът е активен.';
+  if (status === 413) return 'Заявката е твърде голяма (413). Ползвай по-кратка тема (2-4 думи) и опитай пак.';
+  if (status === 429) return 'Достигнат лимит на заявки (429). Изчакай минута и опитай отново.';
+  if (status === 529 || status === 503) return 'Anthropic сървърите са претоварени в момента. Изчакай малко и опитай пак.';
+  return 'Грешка от API (' + status + ')' + (msg ? ': ' + msg : '') + '.';
+}
+
+/* ── Извикване на Claude ── */
+function callClaude(apiKey, prompt, useSearch){
+  var body = {
+    model: 'claude-sonnet-4-6',
+    max_tokens: 2500,
+    messages: [{ role: 'user', content: prompt }]
+  };
+  if (useSearch) body.tools = [{ type: 'web_search_20250305', name: 'web_search' }];
+
+  return fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
     headers: {
-      "Content-Type": "application/json",
-      "Authorization": "Bearer " + apiKey
+      'Content-Type': 'application/json',
+      'x-api-key': apiKey,
+      'anthropic-version': '2023-06-01',
+      'anthropic-dangerous-direct-browser-access': 'true'
     },
-    body: JSON.stringify({
-      model: model,
-      max_completion_tokens: 4000,
-      messages: [{ role: "user", content: prompt }]
-    })
+    body: JSON.stringify(body)
+  }).then(function(r){
+    return r.json().catch(function(){ return {}; }).then(function(data){
+      if (!r.ok || data.error){
+        var m = (data.error && data.error.message) ? data.error.message : '';
+        throw new Error(friendlyError(r.status, m));
+      }
+      var text = '';
+      var content = data.content || [];
+      for (var i = 0; i < content.length; i++){
+        if (content[i].type === 'text') text += content[i].text + '\n';
+      }
+      return text;
+    });
+  }, function(){
+    throw new Error('Failed to fetch — заявката не стигна до Anthropic. Отвори сайта през http/https адрес (GitHub Pages или localhost), не като локален файл, и изключи adblock за тази страница.');
   });
-  const data = await r.json();
-  if(data.error) throw new Error(data.error.message || 'API грешка');
-  return data.choices?.[0]?.message?.content || '';
 }
 
+/* ── Промпт: редов формат вместо JSON — не може да се счупи ── */
 function buildPrompt(q){
-  return `Ти си експерт по дигитален маркетинг и SEO за българския пазар.
-
-ЗАДАЧА: Направи интернет проучване (web search) за темата: "${q}" (пазар: България).
-
-Открий кои ключови думи и фрази се търсят най-често на български по тази тема, какви текстове използват успешните обяви и сайтове в нишата, и какви са нуждите на клиентите.
-
-След проучването върни САМО валиден JSON — без markdown, без обяснения преди или след него. КРИТИЧНО ВАЖНО за валидността:
-- Само прави двойни кавички (") за JSON структурата
-- ВЪТРЕ в текстовете не използвай двойни кавички изобщо
-- Без запетая след последния елемент в масив или обект
-- Без нови редове вътре в стойностите — ползвай \\n
-
-Формат:
-{"keywords":[{"word":"...","popularity":95,"note":"..."}],"phrases":["..."],"insights":["..."],"facebook_ad":{"headline":"...","text":"..."},"instagram_ad":{"headline":"...","text":"...","hashtags":["#..."]},"short_ad":{"text":"..."}}
-
-Изисквания: 6-8 ключови думи сортирани по популярност (popularity е число 0-100); 4-5 популярни търсени фрази; 3 извода от проучването; Facebook текст 3-5 изречения с емоджита и призив за действие; Instagram по-кратък визуален стил с 8-12 хаштага (микс български и английски); кратка спонсорирана обява 1-2 изречения. Всички текстове на естествен, продаващ български език, вплитащи най-търсените думи.`;
+  return 'Ти си експерт по дигитален маркетинг за българския пазар. Направи кратко интернет проучване (web search, максимум 3 търсения) за темата: "' + q + '" в България — кои ключови думи се търсят най-често и какви обяви работят.\n\n' +
+  'След това отговори САМО в следния редов формат, ред по ред, без нищо друго преди или след:\n\n' +
+  'KW|дума или фраза|число 0-100|кратка бележка\n' +
+  '(6 до 8 реда KW, сортирани по популярност)\n' +
+  'PH|популярна търсена фраза\n' +
+  '(4 до 5 реда PH)\n' +
+  'IN|кратък извод от проучването\n' +
+  '(3 реда IN)\n' +
+  'FBH|заглавие за Facebook обява\n' +
+  'FBT|пълен текст за Facebook: 3-5 изречения с емоджита и призив за действие, вплитащ най-търсените думи (всичко на ЕДИН ред, без нови редове)\n' +
+  'IGH|заглавие за Instagram\n' +
+  'IGT|текст за Instagram: по-кратък, визуален стил, с емоджита (на един ред)\n' +
+  'IGX|8-12 хаштага разделени с интервал, микс български и английски\n' +
+  'SH|кратка спонсорирана обява от 1-2 изречения\n\n' +
+  'Правила: всеки ред започва с код и |, съдържанието е на един ред. Български език, естествен продаващ стил.';
 }
 
-async function run(){
-  const q = $('#query').value.trim();
-  const key = apikeyInput.value.trim();
-  if(!q) return;
-  if(!key){ out.innerHTML = `<div class="err">Въведи Groq API ключ, за да работи проучването. Безплатен ключ: console.groq.com/keys</div>`; return; }
-  localStorage.setItem('groq_key', key);
-
-  const btn = $('#go');
-  btn.disabled = true; btn.textContent = 'Проучвам…';
-  out.innerHTML = loadingHTML(`Проучвам интернет за „${q}“…`);
-
-  try{
-    // groq/compound има вградено web search (изпълнява се на сървъра на Groq)
-    let text = await callGroq(key, buildPrompt(q), "groq/compound");
-    let parsed;
-    try {
-      parsed = extractJSON(text);
-    } catch(e){
-      // втори опит: бърз модел поправя JSON формата
-      out.innerHTML = loadingHTML('Поправям формата на данните…');
-      const fixedText = await callGroq(key,
-        `Поправи следния текст така, че да е 100% валиден JSON. Върни САМО JSON, нищо друго. Запази цялото съдържание:\n\n${text}`,
-        "openai/gpt-oss-120b");
-      parsed = extractJSON(fixedText);
+/* ── Парсване на редовия формат ── */
+function parseLines(text){
+  var r = { keywords: [], phrases: [], insights: [], fb: {}, ig: {}, sh: {} };
+  var lines = text.split('\n');
+  for (var i = 0; i < lines.length; i++){
+    var line = lines[i].trim();
+    var p = line.indexOf('|');
+    if (p < 2 || p > 4) continue;
+    var code = line.slice(0, p).toUpperCase();
+    var rest = line.slice(p + 1).trim();
+    if (!rest) continue;
+    if (code === 'KW'){
+      var parts = rest.split('|');
+      r.keywords.push({
+        word: (parts[0] || '').trim(),
+        popularity: Math.max(0, Math.min(100, parseInt(parts[1], 10) || 50)),
+        note: (parts[2] || '').trim()
+      });
     }
-    render(parsed);
-  } catch(e){
-    out.innerHTML = `<div class="err">Нещо се обърка: ${esc(e.message)}. Опитай отново.</div>`;
-  } finally {
-    btn.disabled = false; btn.textContent = 'Проучи';
+    else if (code === 'PH') r.phrases.push(rest);
+    else if (code === 'IN') r.insights.push(rest);
+    else if (code === 'FBH') r.fb.headline = rest;
+    else if (code === 'FBT') r.fb.text = (r.fb.text ? r.fb.text + ' ' : '') + rest;
+    else if (code === 'IGH') r.ig.headline = rest;
+    else if (code === 'IGT') r.ig.text = (r.ig.text ? r.ig.text + ' ' : '') + rest;
+    else if (code === 'IGX') r.ig.hashtags = rest;
+    else if (code === 'SH') r.sh.text = (r.sh.text ? r.sh.text + ' ' : '') + rest;
   }
+  return r;
 }
 
-function render(r){
-  const kwMax = Math.max(...(r.keywords||[]).map(k=>+k.popularity||0), 1);
-  let html = '';
+function run(){
+  var q = queryInput.value.trim();
+  var key = apikeyInput.value.trim();
+  if (!q) return;
+  if (q.length > 120) q = q.slice(0, 120);
+  if (!key){
+    out.innerHTML = '<div class="err">Въведи Anthropic API ключ в горното поле, за да работи проучването.</div>';
+    return;
+  }
+  try { localStorage.setItem('anthropic_key', key); } catch(e){}
 
-  if(r.keywords?.length){
-    html += `<section class="card"><h2 style="color:var(--cyan)">Най-търсени ключови думи</h2>` +
-      r.keywords.map(k=>`
-        <div class="kw">
-          <div class="top"><strong>${esc(k.word)}</strong><span style="color:var(--dim)">${esc(String(k.popularity??''))}</span></div>
-          <div class="bar"><i style="width:${(+k.popularity||0)/kwMax*100}%"></i></div>
-          ${k.note?`<div class="note">${esc(k.note)}</div>`:''}
-        </div>`).join('') + `</section>`;
+  goBtn.disabled = true;
+  goBtn.textContent = 'Проучвам…';
+  out.innerHTML = loadingHTML('Проучвам интернет за „' + q + '“… (30-60 сек)');
+
+  callClaude(key, buildPrompt(q), true)
+    .then(function(text){
+      var r = parseLines(text);
+      if (!r.keywords.length && !r.fb.text){
+        throw new Error('Отговорът дойде в неочакван формат. Натисни „Проучи“ още веднъж — обикновено вторият опит минава.');
+      }
+      render(r, q);
+    })
+    .catch(function(e){
+      out.innerHTML = '<div class="err">' + esc(e.message) + '</div>';
+    })
+    .then(function(){
+      goBtn.disabled = false;
+      goBtn.textContent = 'Проучи';
+    });
+}
+
+function render(r, q){
+  var html = '';
+  var kwMax = 1;
+  for (var i = 0; i < r.keywords.length; i++) kwMax = Math.max(kwMax, r.keywords[i].popularity);
+
+  if (r.keywords.length){
+    html += '<section class="card"><h2 style="color:var(--cyan)">Най-търсени ключови думи</h2>';
+    for (var i = 0; i < r.keywords.length; i++){
+      var k = r.keywords[i];
+      html += '<div class="kw"><div class="top"><strong>' + esc(k.word) + '</strong>' +
+              '<span style="color:var(--dim)">' + k.popularity + '</span></div>' +
+              '<div class="bar"><i style="width:' + (k.popularity / kwMax * 100) + '%"></i></div>' +
+              (k.note ? '<div class="note">' + esc(k.note) + '</div>' : '') + '</div>';
+    }
+    html += '</section>';
   }
 
-  if(r.phrases?.length || r.insights?.length){
-    html += `<section class="card"><h2 style="color:var(--yellow)">Популярни търсения</h2>
-      <div class="chips">${(r.phrases||[]).map(p=>`<span class="chip">🔍 ${esc(p)}</span>`).join('')}</div>
-      ${r.insights?.length?`<ul class="insights">${r.insights.map(s=>`<li>${esc(s)}</li>`).join('')}</ul>`:''}
-    </section>`;
+  if (r.phrases.length || r.insights.length){
+    html += '<section class="card"><h2 style="color:var(--yellow)">Популярни търсения</h2><div class="chips">';
+    for (var i = 0; i < r.phrases.length; i++) html += '<span class="chip">🔍 ' + esc(r.phrases[i]) + '</span>';
+    html += '</div>';
+    if (r.insights.length){
+      html += '<ul class="insights">';
+      for (var i = 0; i < r.insights.length; i++) html += '<li>' + esc(r.insights[i]) + '</li>';
+      html += '</ul>';
+    }
+    html += '</section>';
   }
 
-  const ads = [
-    {id:'fb', label:'Facebook обява', accent:'#1877f2', ad:r.facebook_ad},
-    {id:'ig', label:'Instagram пост', accent:'var(--magenta)', ad:r.instagram_ad},
-    {id:'short', label:'Кратка спонсорирана обява', accent:'var(--yellow)', ad:r.short_ad},
+  var ads = [
+    { label:'Facebook обява', accent:'#1877f2', head:r.fb.headline, text:r.fb.text, tags:'' },
+    { label:'Instagram пост', accent:'#e91e8c', head:r.ig.headline, text:r.ig.text, tags:r.ig.hashtags || '' },
+    { label:'Кратка спонсорирана обява', accent:'#f5c518', head:'', text:r.sh.text, tags:'' }
   ];
-  for(const {id,label,accent,ad} of ads){
-    if(!ad) continue;
-    const full = (ad.headline?ad.headline+'\n\n':'') + (ad.text||'') + (ad.hashtags?'\n\n'+ad.hashtags.join(' '):'');
-    html += `<section class="card adcard" style="--accent:${accent}">
-      <div class="adhead"><h2 style="color:${accent}">${label}</h2>
-        <button class="copybtn" data-copy="${esc(full)}">Копирай</button></div>
-      ${ad.headline?`<div class="adtitle">${esc(ad.headline)}</div>`:''}
-      <p class="adtext">${esc(ad.text||'')}</p>
-      ${ad.hashtags?`<div class="tags">${ad.hashtags.map(esc).join(' ')}</div>`:''}
-    </section>`;
+  var copies = [];
+  for (var i = 0; i < ads.length; i++){
+    var a = ads[i];
+    if (!a.text) continue;
+    var full = (a.head ? a.head + '\n\n' : '') + a.text + (a.tags ? '\n\n' + a.tags : '');
+    copies.push(full);
+    html += '<section class="card adcard" style="--accent:' + a.accent + '">' +
+      '<div class="adhead"><h2 style="color:' + a.accent + '">' + a.label + '</h2>' +
+      '<button class="copybtn" data-i="' + (copies.length - 1) + '">Копирай</button></div>' +
+      (a.head ? '<div class="adtitle">' + esc(a.head) + '</div>' : '') +
+      '<p class="adtext">' + esc(a.text) + '</p>' +
+      (a.tags ? '<div class="tags">' + esc(a.tags) + '</div>' : '') +
+      '</section>';
   }
 
   out.innerHTML = html;
-  out.querySelectorAll('.copybtn').forEach(b=>{
-    b.addEventListener('click', async ()=>{
-      try{
-        await navigator.clipboard.writeText(b.dataset.copy);
-        b.classList.add('done'); b.textContent='✓ Копирано';
-        setTimeout(()=>{ b.classList.remove('done'); b.textContent='Копирай'; }, 1500);
-      }catch(e){}
-    });
-  });
+  var btns = out.querySelectorAll('.copybtn');
+  for (var i = 0; i < btns.length; i++){
+    (function(btn){
+      btn.addEventListener('click', function(){
+        var t = copies[parseInt(btn.getAttribute('data-i'), 10)] || '';
+        function done(){
+          btn.classList.add('done'); btn.textContent = '✓ Копирано';
+          setTimeout(function(){ btn.classList.remove('done'); btn.textContent = 'Копирай'; }, 1500);
+        }
+        if (navigator.clipboard && navigator.clipboard.writeText){
+          navigator.clipboard.writeText(t).then(done, function(){ fallbackCopy(t); done(); });
+        } else { fallbackCopy(t); done(); }
+      });
+    })(btns[i]);
+  }
 }
 
-$('#go').addEventListener('click', run);
-$('#query').addEventListener('keydown', e=>{ if(e.key==='Enter') run(); });
+function fallbackCopy(t){
+  var ta = document.createElement('textarea');
+  ta.value = t; ta.style.position = 'fixed'; ta.style.opacity = '0';
+  document.body.appendChild(ta); ta.select();
+  try { document.execCommand('copy'); } catch(e){}
+  document.body.removeChild(ta);
+}
 
-out.innerHTML = `<div class="empty">Пример: напиши <strong>„печат на винил“</strong> и натисни „Проучи“ —<br>ще получиш ключови думи, популярни търсения и три готови обяви.</div>`;
+goBtn.addEventListener('click', run);
+queryInput.addEventListener('keydown', function(e){ if (e.key === 'Enter') run(); });
+
+out.innerHTML = '<div class="empty">Пример: напиши <strong>„печат на винил“</strong> и натисни „Проучи“ —<br>ще получиш ключови думи, популярни търсения и три готови обяви.</div>';
 </script>
 </body>
 </html>
