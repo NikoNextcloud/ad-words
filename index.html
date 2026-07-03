@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="bg">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Рекламен асистент — проучване и обяви</title>
+<style>
+  :root{
+    --bg:#0f0f13; --panel:#17171d; --panel2:#1e1e26; --line:#2a2a34;
+    --text:#f2f0eb; --dim:#8b8b98;
+    --cyan:#00b7d4; --magenta:#e91e8c; --yellow:#f5c518;
+  }
+  *{box-sizing:border-box; margin:0; padding:0}
+  body{background:var(--bg); color:var(--text); font-family:'Segoe UI',system-ui,sans-serif; min-height:100vh; padding-bottom:64px}
+  .cmyk{display:flex; height:6px}
+  .cmyk div{flex:1}
+  .wrap{max-width:860px; margin:0 auto; padding:0 16px}
+  header{padding:40px 0 8px}
+  .eyebrow{font-size:12px; letter-spacing:3px; color:var(--dim); text-transform:uppercase}
+  h1{font-size:clamp(28px,5vw,44px); margin-top:8px; font-weight:800; line-height:1.1}
+  h1 span{background:linear-gradient(90deg,var(--cyan),var(--magenta),var(--yellow)); -webkit-background-clip:text; background-clip:text; -webkit-text-fill-color:transparent}
+  header p{color:var(--dim); margin-top:10px; font-size:15px}
+  .row{display:flex; gap:10px; margin-top:20px; flex-wrap:wrap}
+  input{flex:1 1 260px; background:var(--panel); border:1px solid var(--line); border-radius:10px; padding:14px 16px; color:var(--text); font-size:16px; outline:none; font-family:inherit}
+  input:focus{border-color:var(--magenta)}
+  button.primary{background:var(--magenta); color:#fff; border:none; border-radius:10px; padding:14px 26px; font-size:16px; font-weight:700; cursor:pointer; font-family:inherit}
+  button.primary:disabled{background:var(--panel2); color:var(--dim); cursor:wait}
+  .keyrow{margin-top:12px}
+  .keyrow input{font-size:13px; padding:10px 14px; width:100%}
+  .hint{font-size:12px; color:var(--dim); margin-top:6px; line-height:1.5}
+  .hint a{color:var(--cyan)}
+  .card{background:var(--panel); border:1px solid var(--line); border-radius:14px; padding:22px; margin-top:20px}
+  .card h2{font-size:13px; letter-spacing:2px; text-transform:uppercase}
+  .loading{display:flex; align-items:center; gap:12px}
+  .dots{display:flex; gap:5px}
+  .dots i{width:10px; height:10px; border-radius:50%; animation:pulse 1.2s infinite ease-in-out}
+  .dots i:nth-child(1){background:var(--cyan)}
+  .dots i:nth-child(2){background:var(--magenta); animation-delay:.2s}
+  .dots i:nth-child(3){background:var(--yellow); animation-delay:.4s}
+  @keyframes pulse{0%,100%{opacity:.25; transform:scale(.8)} 50%{opacity:1; transform:scale(1.15)}}
+  .err{margin-top:20px; padding:16px; background:#2a1520; border:1px solid var(--magenta); border-radius:10px; color:#ff9ccb; font-size:14px}
+  .kw{margin-top:12px}
+  .kw .top{display:flex; justify-content:space-between; font-size:14px; margin-bottom:5px}
+  .bar{height:7px; background:var(--panel2); border-radius:4px; overflow:hidden}
+  .bar i{display:block; height:100%; border-radius:4px; background:linear-gradient(90deg,var(--cyan),var(--magenta)); transition:width .6s ease}
+  .note{font-size:12px; color:var(--dim); margin-top:4px}
+  .chips{display:flex; flex-wrap:wrap; gap:8px; margin-top:14px}
+  .chip{background:var(--panel2); border:1px solid var(--line); border-radius:20px; padding:7px 14px; font-size:13px}
+  ul.insights{margin-top:16px; padding-left:20px; color:var(--dim); font-size:14px; line-height:1.7}
+  .adcard{border-top:3px solid var(--accent,var(--cyan))}
+  .adhead{display:flex; justify-content:space-between; align-items:center}
+  .copybtn{background:transparent; color:var(--dim); border:1px solid var(--line); border-radius:8px; padding:6px 14px; font-size:13px; cursor:pointer; font-family:inherit}
+  .copybtn.done{background:var(--accent); color:#fff; border-color:var(--accent)}
+  .adtitle{margin-top:14px; font-weight:800; font-size:17px}
+  .adtext{margin-top:10px; white-space:pre-wrap; line-height:1.7; font-size:15px}
+  .tags{margin-top:8px; color:var(--cyan); font-size:14px; line-height:1.8}
+  .empty{margin-top:40px; color:var(--dim); font-size:14px; text-align:center; padding:30px; border:1px dashed var(--line); border-radius:14px}
+  .empty strong{color:var(--text)}
+</style>
+</head>
+<body>
+<div class="cmyk"><div style="background:var(--cyan)"></div><div style="background:var(--magenta)"></div><div style="background:var(--yellow)"></div><div style="background:#000"></div></div>
+
+<div class="wrap">
+  <header>
+    <div class="eyebrow">Проучване · Ключови думи · Обяви</div>
+    <h1>Рекламен <span>асистент</span></h1>
+    <p>Въведи тема — асистентът проучва интернет, извлича най-търсените думи и съставя готови обяви за Facebook и Instagram.</p>
+  </header>
+
+  <div class="keyrow">
+    <input id="apikey" type="password" placeholder="Groq API ключ (gsk_…)">
+    <div class="hint">Ключът се пази само в твоя браузър (localStorage) и се изпраща единствено към api.groq.com. Вземи безплатен ключ от <a href="https://console.groq.com/keys" target="_blank" rel="noopener">console.groq.com/keys</a>.</div>
+  </div>
+
+  <div class="row">
+    <input id="query" placeholder="напр. „печат на винил“, „брандирани тениски“…">
+    <button class="primary" id="go">Проучи</button>
+  </div>
+
+  <div id="out"></div>
+</div>
+
+<script>
+const GROQ_URL = "https://api.groq.com/openai/v1/chat/completions";
+const $ = s => document.querySelector(s);
+const out = $('#out');
+const apikeyInput = $('#apikey');
+apikeyInput.value = localStorage.getItem('groq_key') || '';
+apikeyInput.addEventListener('change', () => localStorage.setItem('groq_key', apikeyInput.value.trim()));
+
+function esc(s){ const d=document.createElement('div'); d.textContent=s??''; return d.innerHTML; }
+
+// ── Устойчиво извличане на JSON ──
+function extractJSON(text){
+  let t = String(text).replace(/```json/gi,'').replace(/```/g,'');
+  const a = t.indexOf('{'), b = t.lastIndexOf('}');
+  if(a===-1 || b===-1) throw new Error('Няма JSON в отговора');
+  t = t.slice(a, b+1);
+  try { return JSON.parse(t); } catch(e){}
+  // чести поправки: висящи запетаи, контролни символи
+  let fixed = t
+    .replace(/,\s*([\]}])/g, '$1')
+    .replace(/[\u0000-\u001f]+/g, ' ');
+  try { return JSON.parse(fixed); } catch(e){}
+  // "умни" кавички вътре в стойности
+  fixed = fixed.replace(/[„""“]/g, "'");
+  return JSON.parse(fixed);
+}
+
+function loadingHTML(msg){
+  return `<div class="card loading"><div class="dots"><i></i><i></i><i></i></div><span style="color:var(--dim);font-size:14px">${esc(msg)}</span></div>`;
+}
+
+async function callGroq(apiKey, prompt, model){
+  const r = await fetch(GROQ_URL, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer " + apiKey
+    },
+    body: JSON.stringify({
+      model: model,
+      max_completion_tokens: 4000,
+      messages: [{ role: "user", content: prompt }]
+    })
+  });
+  const data = await r.json();
+  if(data.error) throw new Error(data.error.message || 'API грешка');
+  return data.choices?.[0]?.message?.content || '';
+}
+
+function buildPrompt(q){
+  return `Ти си експерт по дигитален маркетинг и SEO за българския пазар.
+
+ЗАДАЧА: Направи интернет проучване (web search) за темата: "${q}" (пазар: България).
+
+Открий кои ключови думи и фрази се търсят най-често на български по тази тема, какви текстове използват успешните обяви и сайтове в нишата, и какви са нуждите на клиентите.
+
+След проучването върни САМО валиден JSON — без markdown, без обяснения преди или след него. КРИТИЧНО ВАЖНО за валидността:
+- Само прави двойни кавички (") за JSON структурата
+- ВЪТРЕ в текстовете не използвай двойни кавички изобщо
+- Без запетая след последния елемент в масив или обект
+- Без нови редове вътре в стойностите — ползвай \\n
+
+Формат:
+{"keywords":[{"word":"...","popularity":95,"note":"..."}],"phrases":["..."],"insights":["..."],"facebook_ad":{"headline":"...","text":"..."},"instagram_ad":{"headline":"...","text":"...","hashtags":["#..."]},"short_ad":{"text":"..."}}
+
+Изисквания: 6-8 ключови думи сортирани по популярност (popularity е число 0-100); 4-5 популярни търсени фрази; 3 извода от проучването; Facebook текст 3-5 изречения с емоджита и призив за действие; Instagram по-кратък визуален стил с 8-12 хаштага (микс български и английски); кратка спонсорирана обява 1-2 изречения. Всички текстове на естествен, продаващ български език, вплитащи най-търсените думи.`;
+}
+
+async function run(){
+  const q = $('#query').value.trim();
+  const key = apikeyInput.value.trim();
+  if(!q) return;
+  if(!key){ out.innerHTML = `<div class="err">Въведи Groq API ключ, за да работи проучването. Безплатен ключ: console.groq.com/keys</div>`; return; }
+  localStorage.setItem('groq_key', key);
+
+  const btn = $('#go');
+  btn.disabled = true; btn.textContent = 'Проучвам…';
+  out.innerHTML = loadingHTML(`Проучвам интернет за „${q}“…`);
+
+  try{
+    // groq/compound има вградено web search (изпълнява се на сървъра на Groq)
+    let text = await callGroq(key, buildPrompt(q), "groq/compound");
+    let parsed;
+    try {
+      parsed = extractJSON(text);
+    } catch(e){
+      // втори опит: бърз модел поправя JSON формата
+      out.innerHTML = loadingHTML('Поправям формата на данните…');
+      const fixedText = await callGroq(key,
+        `Поправи следния текст така, че да е 100% валиден JSON. Върни САМО JSON, нищо друго. Запази цялото съдържание:\n\n${text}`,
+        "openai/gpt-oss-120b");
+      parsed = extractJSON(fixedText);
+    }
+    render(parsed);
+  } catch(e){
+    out.innerHTML = `<div class="err">Нещо се обърка: ${esc(e.message)}. Опитай отново.</div>`;
+  } finally {
+    btn.disabled = false; btn.textContent = 'Проучи';
+  }
+}
+
+function render(r){
+  const kwMax = Math.max(...(r.keywords||[]).map(k=>+k.popularity||0), 1);
+  let html = '';
+
+  if(r.keywords?.length){
+    html += `<section class="card"><h2 style="color:var(--cyan)">Най-търсени ключови думи</h2>` +
+      r.keywords.map(k=>`
+        <div class="kw">
+          <div class="top"><strong>${esc(k.word)}</strong><span style="color:var(--dim)">${esc(String(k.popularity??''))}</span></div>
+          <div class="bar"><i style="width:${(+k.popularity||0)/kwMax*100}%"></i></div>
+          ${k.note?`<div class="note">${esc(k.note)}</div>`:''}
+        </div>`).join('') + `</section>`;
+  }
+
+  if(r.phrases?.length || r.insights?.length){
+    html += `<section class="card"><h2 style="color:var(--yellow)">Популярни търсения</h2>
+      <div class="chips">${(r.phrases||[]).map(p=>`<span class="chip">🔍 ${esc(p)}</span>`).join('')}</div>
+      ${r.insights?.length?`<ul class="insights">${r.insights.map(s=>`<li>${esc(s)}</li>`).join('')}</ul>`:''}
+    </section>`;
+  }
+
+  const ads = [
+    {id:'fb', label:'Facebook обява', accent:'#1877f2', ad:r.facebook_ad},
+    {id:'ig', label:'Instagram пост', accent:'var(--magenta)', ad:r.instagram_ad},
+    {id:'short', label:'Кратка спонсорирана обява', accent:'var(--yellow)', ad:r.short_ad},
+  ];
+  for(const {id,label,accent,ad} of ads){
+    if(!ad) continue;
+    const full = (ad.headline?ad.headline+'\n\n':'') + (ad.text||'') + (ad.hashtags?'\n\n'+ad.hashtags.join(' '):'');
+    html += `<section class="card adcard" style="--accent:${accent}">
+      <div class="adhead"><h2 style="color:${accent}">${label}</h2>
+        <button class="copybtn" data-copy="${esc(full)}">Копирай</button></div>
+      ${ad.headline?`<div class="adtitle">${esc(ad.headline)}</div>`:''}
+      <p class="adtext">${esc(ad.text||'')}</p>
+      ${ad.hashtags?`<div class="tags">${ad.hashtags.map(esc).join(' ')}</div>`:''}
+    </section>`;
+  }
+
+  out.innerHTML = html;
+  out.querySelectorAll('.copybtn').forEach(b=>{
+    b.addEventListener('click', async ()=>{
+      try{
+        await navigator.clipboard.writeText(b.dataset.copy);
+        b.classList.add('done'); b.textContent='✓ Копирано';
+        setTimeout(()=>{ b.classList.remove('done'); b.textContent='Копирай'; }, 1500);
+      }catch(e){}
+    });
+  });
+}
+
+$('#go').addEventListener('click', run);
+$('#query').addEventListener('keydown', e=>{ if(e.key==='Enter') run(); });
+
+out.innerHTML = `<div class="empty">Пример: напиши <strong>„печат на винил“</strong> и натисни „Проучи“ —<br>ще получиш ключови думи, популярни търсения и три готови обяви.</div>`;
+</script>
+</body>
+</html>
