@@ -69,8 +69,8 @@
   </header>
 
   <div class="keyrow">
-    <input id="apikey" type="password" placeholder="Anthropic API ключ (sk-ant-…)" autocomplete="off">
-    <div class="hint">Ключът се пази само в твоя браузър и се изпраща единствено към api.anthropic.com. Вземи ключ от <a href="https://console.anthropic.com" target="_blank" rel="noopener">console.anthropic.com</a>.</div>
+    <input id="apikey" type="password" placeholder="xAI (Grok) API ключ (xai-…)" autocomplete="off">
+    <div class="hint">Ключът се пази само в твоя браузър и се изпраща към api.x.ai. Вземи безплатен ключ от <a href="https://console.x.ai" target="_blank" rel="noopener">console.x.ai</a>.</div>
   </div>
 
   <div class="row">
@@ -88,9 +88,9 @@ var apikeyInput = document.getElementById('apikey');
 var queryInput = document.getElementById('query');
 var goBtn = document.getElementById('go');
 
-try { apikeyInput.value = localStorage.getItem('anthropic_key') || ''; } catch(e){}
+try { apikeyInput.value = localStorage.getItem('xai_key') || ''; } catch(e){}
 apikeyInput.addEventListener('change', function(){
-  try { localStorage.setItem('anthropic_key', apikeyInput.value.trim()); } catch(e){}
+  try { localStorage.setItem('xai_key', apikeyInput.value.trim()); } catch(e){}
 });
 
 function esc(s){
@@ -104,47 +104,77 @@ function loadingHTML(msg){
 }
 
 function friendlyError(status, msg){
-  if (status === 401) return 'Невалиден API ключ. Провери го в console.anthropic.com и го въведи отново в горното поле.';
+  if (status === 401) return 'Невалиден API ключ. Провери го в console.x.ai и го въведи отново в горното поле.';
   if (status === 403) return 'Ключът няма достъп (403). Провери дали има кредит в акаунта и дали ключът е активен.';
   if (status === 413) return 'Заявката е твърде голяма (413). Ползвай по-кратка тема (2-4 думи) и опитай пак.';
   if (status === 429) return 'Достигнат лимит на заявки (429). Изчакай минута и опитай отново.';
-  if (status === 529 || status === 503) return 'Anthropic сървърите са претоварени в момента. Изчакай малко и опитай пак.';
+  if (status === 529 || status === 503) return 'xAI сървърите са претоварени в момента. Изчакай малко и опитай пак.';
   return 'Грешка от API (' + status + ')' + (msg ? ': ' + msg : '') + '.';
 }
 
-/* ── Извикване на Claude ── */
-function callClaude(apiKey, prompt, useSearch){
+/* ── Извикване на Grok (xAI Responses API) ── */
+function grokBody(prompt, useSearch){
   var body = {
-    model: 'claude-sonnet-4-6',
-    max_tokens: 2500,
-    messages: [{ role: 'user', content: prompt }]
+    model: 'grok-4.3',
+    max_output_tokens: 2500,
+    input: [{ role: 'user', content: prompt }]
   };
-  if (useSearch) body.tools = [{ type: 'web_search_20250305', name: 'web_search' }];
+  if (useSearch) body.tools = [{ type: 'web_search' }];
+  return JSON.stringify(body);
+}
 
-  return fetch('https://api.anthropic.com/v1/messages', {
+function extractGrokText(data){
+  var text = '';
+  var outArr = data.output || [];
+  for (var i = 0; i < outArr.length; i++){
+    var item = outArr[i];
+    if (item.type === 'message' && item.content){
+      for (var j = 0; j < item.content.length; j++){
+        if (item.content[j].type === 'output_text') text += item.content[j].text + '\n';
+      }
+    }
+  }
+  return text;
+}
+
+function doFetch(url, apiKey, bodyStr){
+  return fetch(url, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'x-api-key': apiKey,
-      'anthropic-version': '2023-06-01',
-      'anthropic-dangerous-direct-browser-access': 'true'
+      'Authorization': 'Bearer ' + apiKey
     },
-    body: JSON.stringify(body)
+    body: bodyStr
   }).then(function(r){
     return r.json().catch(function(){ return {}; }).then(function(data){
       if (!r.ok || data.error){
-        var m = (data.error && data.error.message) ? data.error.message : '';
+        var m = '';
+        if (data.error){ m = typeof data.error === 'string' ? data.error : (data.error.message || ''); }
         throw new Error(friendlyError(r.status, m));
       }
-      var text = '';
-      var content = data.content || [];
-      for (var i = 0; i < content.length; i++){
-        if (content[i].type === 'text') text += content[i].text + '\n';
-      }
-      return text;
+      return extractGrokText(data);
     });
-  }, function(){
-    throw new Error('Failed to fetch — заявката не стигна до Anthropic. Отвори сайта през http/https адрес (GitHub Pages или localhost), не като локален файл, и изключи adblock за тази страница.');
+  });
+}
+
+function callClaude(apiKey, prompt, useSearch){
+  var bodyStr = grokBody(prompt, useSearch);
+  var direct = 'https://api.x.ai/v1/responses';
+  return doFetch(direct, apiKey, bodyStr).catch(function(e){
+    if (e && e.message && e.message.indexOf('Грешка от API') === -1 &&
+        e.message.indexOf('ключ') === -1 && e.message.indexOf('лимит') === -1 &&
+        e.message.indexOf('претоварени') === -1 && e.message.indexOf('твърде голяма') === -1 &&
+        e instanceof TypeError === false && e.name !== 'TypeError'){
+      throw e;
+    }
+    if (e.name === 'TypeError' || (e.message && /fetch/i.test(e.message))){
+      // Мрежова/CORS блокировка — опит през CORS proxy
+      var proxied = 'https://corsproxy.io/?url=' + encodeURIComponent(direct);
+      return doFetch(proxied, apiKey, bodyStr).catch(function(){
+        throw new Error('Заявката не стигна до xAI (мрежова или CORS блокировка). Отвори сайта през https адрес (GitHub Pages), изключи adblock, и опитай пак.');
+      });
+    }
+    throw e;
   });
 }
 
@@ -207,7 +237,7 @@ function run(){
     out.innerHTML = '<div class="err">Въведи Anthropic API ключ в горното поле, за да работи проучването.</div>';
     return;
   }
-  try { localStorage.setItem('anthropic_key', key); } catch(e){}
+  try { localStorage.setItem('xai_key', key); } catch(e){}
 
   goBtn.disabled = true;
   goBtn.textContent = 'Проучвам…';
